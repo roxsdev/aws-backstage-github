@@ -1,0 +1,75 @@
+name: Deploy
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Set Docker Image Tag"
+        required: true  
+        type: string
+      repository:
+        description: "Set Repository Name"
+        required: true  
+        type: string
+      url:
+        description: "Set Project URL"
+        required: true  
+        type: string
+      environment:
+        description: "Set Project Environment"
+        required: true  
+        type: string
+        
+jobs: 
+  deploy:
+    name: Set Kustomize and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Checkout GitOps
+        uses: actions/checkout@v4
+        with:
+          repository: roxsdev/roxs-backstage-gitops
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Update k8s kustomization
+        run: |
+          cd deployed_apps/${{ inputs.repository }}/overlays
+          kustomize edit set image webgo=roxsross12/${{ inputs.repository }}:${{ inputs.tag }}
+          cat kustomization.yaml
+
+      - name: Publish ArgoCD Application
+        run: |
+          cd deployed_apps/applications
+          cat << EOF > ${{ inputs.repository }}.yaml
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: ${{ inputs.repository }}
+            namespace: argocd
+          spec:
+            project: idp #every application belongs to a single project
+            source:
+              repoURL: https://github.com/roxsdev/roxs-backstage-gitops
+              targetRevision: HEAD
+              path: deployed_apps/${{ inputs.repository }}/overlays
+            destination:
+              server: https://kubernetes.default.svc
+              namespace: ${{ inputs.repository }}
+            syncPolicy:
+              automated:
+                selfHeal: true
+                prune: true
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -am ":robot: Change image tag and create argo application"
+          git push

@@ -1,0 +1,44 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Set Docker Image Tag"
+        required: true  
+        type: string
+      repository:
+        description: "Set Repository Name"
+        required: true  
+        type: string
+      url:
+        description: "Set Project URL"
+        required: true  
+        type: string
+      environment:
+        description: "Set Project Environment"
+        required: true  
+        type: string
+        
+jobs: 
+  build: 
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    environment: 
+      name: '${{ inputs.environment }}'
+      url: '${{ inputs.url }}'
+    steps: 
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with: 
+          context: .
+          push: true
+          tags: roxsross12/${{ inputs.repository }}:${{ inputs.tag }},roxsross12/${{ inputs.repository }}:latest

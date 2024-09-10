@@ -52,7 +52,7 @@ jobs:
             name: ${{ inputs.repository }}
             namespace: argocd
           spec:
-            project: idp #every application belongs to a single project
+            project: default #every application belongs to a single project
             source:
               repoURL: https://github.com/roxsdev/roxs-backstage-gitops
               targetRevision: HEAD
